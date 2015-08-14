@@ -50,7 +50,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
-using namespace cv;
+#include <vesselness_image_filter_common/vesselness_params.h>
 
 /*
  * This file introduces the abstract base class for the vesselness_image_filter nodes.
@@ -94,6 +94,7 @@ struct segmentThinParam{
 
 };
 
+gaussParam setParameter(int, float);
 
 /*
  * The VesselnessNodeBase abstract class defines members which are common to both the CPU and the GPU instantiation of
@@ -118,9 +119,9 @@ private:
 
 protected:
 
-    Mat outputImage;
+    cv::Mat outputImage;
 
-    Size imgAllocSize;
+    cv::Size imgAllocSize;
 
     //vesselness image filter settings
     gaussParam hessParam;
@@ -161,7 +162,7 @@ public:
      * The abstract member  segmentImage is used by the image topic callback.
      * The function segments and returns (by reference) the output image.
      */
-    virtual void segmentImage(const Mat&, Mat &)=0;
+    virtual void segmentImage(const cv::Mat&, cv::Mat &)=0;
 
     /*
      * The allocateMem is  called by constructor function.
@@ -181,6 +182,13 @@ public:
      * gaussian filter kernels.
      */
     virtual void initKernels()= 0;
+
+
+    /*
+     *
+     * This callback triggers when new filter parameters are piped over.
+     */
+    void updateFilter(const vesselness_image_filter_common::vesselness_params::ConstPtr &);
 
 };
 

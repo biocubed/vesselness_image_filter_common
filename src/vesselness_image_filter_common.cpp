@@ -42,18 +42,36 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
-#include <vesselness_image_filter_common/vesselness_image_filter_common.h>
+#include "vesselness_image_filter_common/vesselness_image_filter_common.h"
 
+using namespace cv;
 
 //TODO brief introductory comments...
 
+gaussParam setParameter(int side, float variance)
+{
+    gaussParam newParameter;
+    newParameter.side = side;
+    if(newParameter.side%2 == 0)
+    {
+        ROS_INFO("The side length must be odd, incrementing");
+        newParameter.side++;
 
+    }
+    if(newParameter.side == 1)
+    {
+        ROS_INFO("The side length must be at least 3, setting to 3");
+        newParameter.side = 3;
+    }
+    newParameter.variance = abs(variance);
+
+    return newParameter;
+}
 
 VesselnessNodeBase::VesselnessNodeBase(const char* subscriptionChar,const char* publicationChar):it_(nh_)
 {
 
     //predetermined init values. (sorta random)
-    segmentThinParam init;
     hessParam.variance = 1.5;
     hessParam.side = 5;
     betaParam = 0.1;    //  betaParamIn;
@@ -69,9 +87,9 @@ VesselnessNodeBase::VesselnessNodeBase(const char* subscriptionChar,const char* 
     image_sub_ = it_.subscribe(subscriptionChar, 1,
         &VesselnessNodeBase::imgTopicCallback, this);
 
-    // subscribe to the setting topic
-    //settings_sub_ = nh_.subscribe("/vesselness/settings", 1,
-    //    &VesselnessNodeBase::updateParameters, this);  //imageCB is the callback f.
+    //subscribe to the setting topic
+    settings_sub_ = nh_.subscribe("/vesselness/settings", 1,
+        &VesselnessNodeBase::updateFilter, this);  //imageCB is the callback f.
 
     //data output.
     image_pub_ = it_.advertise(publicationChar, 1);
@@ -89,7 +107,7 @@ void  VesselnessNodeBase::imgTopicCallback(const sensor_msgs::ImageConstPtr& msg
     std::cout << "Processing an image" << std::endl;
 
     cv_bridge::CvImagePtr cv_ptrIn;
-    cv_bridge::CvImage    cv_Out;
+    cv_bridge::CvImage   cv_Out;
 
     //Attempt to pull the image into an opencv form.
     try
@@ -113,7 +131,7 @@ void  VesselnessNodeBase::imgTopicCallback(const sensor_msgs::ImageConstPtr& msg
     //Publish this output
     //Fill in the headers and encoding type
     cv_Out.image = outputImage;
-    cv_Out.header =  cv_ptrIn->header;
+    //cv_Out.header =  cv_ptrIn->header;
 
     if(outputChannels == 1) cv_Out.encoding = std::string("32FC1");
     if(outputChannels == 2) cv_Out.encoding = std::string("32FC2");
@@ -125,6 +143,18 @@ void  VesselnessNodeBase::imgTopicCallback(const sensor_msgs::ImageConstPtr& msg
     std::cout << "Finished an image" << std::endl;
 }
 
+void VesselnessNodeBase::updateFilter(const vesselness_image_filter_common::vesselness_params::ConstPtr &msg)
+{
+    hessParam = setParameter(msg->hessianSide,msg->hessianVariance);
+
+    postProcess = setParameter(msg->postProcessSide,msg->postProcessVariance);
+
+    betaParam = msg->betaParameter;    //  betaParamIn;
+    cParam    = msg->cParameter;     //  cParamIn;
+
+    initKernels();
+    ROS_INFO("Updated and reinitialized the kernels");
+}
 
 
 VesselnessNodeBase::~VesselnessNodeBase()
