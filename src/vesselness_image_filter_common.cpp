@@ -47,42 +47,13 @@
 using namespace cv;
 
 //TODO brief introductory comments...
-
-gaussParam setParameter(int side, float variance)
+VesselnessNodeBase::VesselnessNodeBase(const char* subscriptionChar,const char* publicationChar):
+    it_(nh_),
+	filterParameters(gaussParam(1.5,5),gaussParam(2.0,7),0.1,0.005),
+	imgAllocSize(-1,-1),
+	kernelReady(false),
+	outputChannels(1)
 {
-    gaussParam newParameter;
-    newParameter.side = side;
-    if(newParameter.side%2 == 0)
-    {
-        ROS_INFO("The side length must be odd, incrementing");
-        newParameter.side++;
-
-    }
-    if(newParameter.side == 1)
-    {
-        ROS_INFO("The side length must be at least 3, setting to 3");
-        newParameter.side = 3;
-    }
-    newParameter.variance = abs(variance);
-
-    return newParameter;
-}
-
-VesselnessNodeBase::VesselnessNodeBase(const char* subscriptionChar,const char* publicationChar):it_(nh_)
-{
-
-    //predetermined init values. (sorta random)
-    hessParam.variance = 1.5;
-    hessParam.side = 5;
-    betaParam = 0.1;    //  betaParamIn;
-    cParam    = 0.005;     //  cParamIn;
-
-    postProcess.variance = 2.0;
-    postProcess.side = 7;
-
-    //initialize the kernels.
-    //initKernels();
-
     // Subscribe to input video feed and publish output video feed
     image_sub_ = it_.subscribe(subscriptionChar, 1,
         &VesselnessNodeBase::imgTopicCallback, this);
@@ -93,19 +64,15 @@ VesselnessNodeBase::VesselnessNodeBase(const char* subscriptionChar,const char* 
 
     //data output.
     image_pub_ = it_.advertise(publicationChar, 1);
-
+	
+	
+	// initialize the kernels
+	initKernels();
 
 }
 
-
-
-
 //image topic callback hook
 void  VesselnessNodeBase::imgTopicCallback(const sensor_msgs::ImageConstPtr& msg) {
-
-
-    std::cout << "Processing an image" << std::endl;
-
     cv_bridge::CvImagePtr cv_ptrIn;
     cv_bridge::CvImage   cv_Out;
 
@@ -121,11 +88,16 @@ void  VesselnessNodeBase::imgTopicCallback(const sensor_msgs::ImageConstPtr& msg
         return;
     }
 
-    std::cout << "converted image to opencv" << std::endl;
-    //Actual process segmentation code:
+    // ROS_INFO("Converted image to opencv");
+    
+	if (cv_ptrIn->image.size().height =! imgAllocSize.height || cv_ptrIn->image.size().width =! imgAllocSize.width )
+	{
+	    ROS_INFO("Resizing the allocated matrices");
+		imgAllocSize = newSize(allocateMem(cv_ptrIn->image.size());
+	}
+	//Actual process segmentation code:
 
     segmentImage(cv_ptrIn->image,outputImage);
-
 
     //The result is outputImage.
     //Publish this output
@@ -140,18 +112,18 @@ void  VesselnessNodeBase::imgTopicCallback(const sensor_msgs::ImageConstPtr& msg
     image_pub_.publish(cv_Out.toImageMsg());
     /*Mat outputImageDisp,preOutputImageDisp; */
 
-    std::cout << "Finished an image" << std::endl;
 }
 
 void VesselnessNodeBase::updateFilter(const vesselness_image_filter_common::vesselness_params::ConstPtr &msg)
 {
-    hessParam = setParameter(msg->hessianSide,msg->hessianVariance);
+	gaussParam hessParam_(msg->hessianVariance,msg->hessianSide);
+    gaussParam postProcess_(msg->postProcessVariance,msg->postProcessSide);
 
-    postProcess = setParameter(msg->postProcessSide,msg->postProcessVariance);
+    float betaParam_ = msg->betaParameter;    //  betaParamIn;
+    float cParam_    = msg->cParameter;     //  cParamIn;
 
-    betaParam = msg->betaParameter;    //  betaParamIn;
-    cParam    = msg->cParameter;     //  cParamIn;
-
+	filterParameters =  segmentThinParam(hessParam_,postProcess_,betaParam_,cParam_);
+	kernelReady = false;
     initKernels();
     ROS_INFO("Updated and reinitialized the kernels");
 }
@@ -159,8 +131,6 @@ void VesselnessNodeBase::updateFilter(const vesselness_image_filter_common::vess
 
 VesselnessNodeBase::~VesselnessNodeBase()
 {
-
-
 
 
 }
