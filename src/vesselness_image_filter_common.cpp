@@ -44,7 +44,33 @@
 
 #include "vesselness_image_filter_common/vesselness_image_filter_common.h"
 
+
 using namespace cv;
+
+
+void VesselnessNodeBase::paramCallback(vesselness_image_filter_common::vesselness_params &params_, uint32_t level)
+{
+  ROS_INFO("Reconfigure request : %d %f %f %f %d %f",
+           config.groups.hessParams.side,
+           config.groups.hessParams.variance,
+           config.beta,
+           config.c,
+           config.groups.postParams.side,
+           config.groups.postParams.variance);
+	
+	
+	gaussParam hessParam_(config.groups.hessParams.variance,config.groups.hessParams.side);
+    gaussParam postProcess_(config.groups.postParams.variance,config.groups.postParams.side);
+
+    float betaParam_ = config.beta;    //  betaParamIn;
+    float cParam_    = config.c;     //  cParamIn;
+
+	filterParameters =  segmentThinParam(hessParam_,postProcess_,betaParam_,cParam_);
+	kernelReady = false;
+    initKernels();
+    ROS_INFO("Updated and reinitialized the kernels");
+}
+
 
 //TODO brief introductory comments...
 VesselnessNodeBase::VesselnessNodeBase(const char* subscriptionChar,const char* publicationChar):
@@ -58,13 +84,12 @@ VesselnessNodeBase::VesselnessNodeBase(const char* subscriptionChar,const char* 
     image_sub_ = it_.subscribe(subscriptionChar, 1,
         &VesselnessNodeBase::imgTopicCallback, this);
 
-    //subscribe to the setting topic
-    settings_sub_ = nh_.subscribe("/vesselness/settings", 1,
-        &VesselnessNodeBase::updateFilter, this);  //imageCB is the callback f.
-
     //data output.
     image_pub_ = it_.advertise(publicationChar, 1);
 	
+	//initialize the parameter server.
+    f = boost::bind(&VesselnessNodeBase::paramCallback, this, _1, _2);
+    srv.setCallback(f);
 	
 	// initialize the kernels
 	initKernels();
@@ -114,19 +139,8 @@ void  VesselnessNodeBase::imgTopicCallback(const sensor_msgs::ImageConstPtr& msg
 
 }
 
-void VesselnessNodeBase::updateFilter(const vesselness_image_filter_common::vesselness_params::ConstPtr &msg)
-{
-	gaussParam hessParam_(msg->hessianVariance,msg->hessianSide);
-    gaussParam postProcess_(msg->postProcessVariance,msg->postProcessSide);
 
-    float betaParam_ = msg->betaParameter;    //  betaParamIn;
-    float cParam_    = msg->cParameter;     //  cParamIn;
 
-	filterParameters =  segmentThinParam(hessParam_,postProcess_,betaParam_,cParam_);
-	kernelReady = false;
-    initKernels();
-    ROS_INFO("Updated and reinitialized the kernels");
-}
 
 
 VesselnessNodeBase::~VesselnessNodeBase()

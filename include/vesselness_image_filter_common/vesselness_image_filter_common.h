@@ -51,7 +51,8 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <vesselness_image_filter_common/vesselness_params.h>
-
+#include <dynamic_reconfigure/server.h>
+#include <vesselness_image_filter_common/vesselness_params_config.h>
 /*
  * This file introduces the abstract base class for the vesselness_image_filter nodes.
  * The Base Class is VesselnessNodeBase.
@@ -166,8 +167,11 @@ private:
 
     image_transport::Subscriber image_sub_;
 
+    dynamic_reconfigure::Server<vesselness_image_filter_common::vesselness_params> srv;
+    dynamic_reconfigure::Server<vesselness_image_filter_common::vesselness_params>::CallbackType f;
 
-
+	void paramCallback(vesselness_image_filter_common::vesselness_params &, uint32_t );
+	
 protected:
 
     cv::Mat outputImage;
@@ -237,7 +241,7 @@ public:
      *
      * This callback triggers when new filter parameters are piped over.
      */
-    void updateFilter(const vesselness_image_filter_common::vesselness_params::ConstPtr &);
+    //void updateFilter(const vesselness_image_filter_common::vesselness_params::ConstPtr &);
 
 	/*
 	 *

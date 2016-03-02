@@ -11,7 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   message_generation
 )
-
+find_package(catkin REQUIRED dynamic_reconfigure)
 
 add_message_files(
     FILES
@@ -30,7 +30,11 @@ catkin_package(
     #   DEPENDS system_lib
 )
 
-
+#
+generate_dynamic_reconfigure_options(
+  cfg/vesselness_params_config.cfg
+  #...
+)
 
 
 
@@ -53,6 +57,7 @@ add_library(vesselness_image_filter_common_lib
    src/vesselness_image_filter_common.cpp
  )
 
+ add_dependencies(vesselness_image_filter_common_lib ${PROJECT_NAME}_gencfg)
 
 #cuda_add_library( 
 
