@@ -48,28 +48,30 @@
 using namespace cv;
 
 
-void VesselnessNodeBase::paramCallback(vesselness_image_filter_common::vesselness_params &params_, uint32_t level)
+void VesselnessNodeBase::paramCallback(vesselness_image_filter_common::vesselness_params_Config &config, uint32_t level)
 {
   ROS_INFO("Reconfigure request : %d %f %f %f %d %f",
-           config.groups.hessParams.side,
-           config.groups.hessParams.variance,
+           config.side_h,
+           config.variance_h,
            config.beta,
            config.c,
-           config.groups.postParams.side,
-           config.groups.postParams.variance);
+           config.side_p,
+           config.variance_p);
 	
 	
-	gaussParam hessParam_(config.groups.hessParams.variance,config.groups.hessParams.side);
-    gaussParam postProcess_(config.groups.postParams.variance,config.groups.postParams.side);
+	gaussParam hessParam_(config.variance_h,config.side_h);
+    gaussParam postProcess_(config.variance_p,config.side_p);
 
     float betaParam_ = config.beta;    //  betaParamIn;
     float cParam_    = config.c;     //  cParamIn;
 
 	filterParameters =  segmentThinParam(hessParam_,postProcess_,betaParam_,cParam_);
 	kernelReady = false;
-    initKernels();
+    ROS_INFO("Reinitializing the kernels");
+    this->initKernels();
     ROS_INFO("Updated and reinitialized the kernels");
 }
+
 
 
 //TODO brief introductory comments...
@@ -86,14 +88,6 @@ VesselnessNodeBase::VesselnessNodeBase(const char* subscriptionChar,const char* 
 
     //data output.
     image_pub_ = it_.advertise(publicationChar, 1);
-	
-	//initialize the parameter server.
-    f = boost::bind(&VesselnessNodeBase::paramCallback, this, _1, _2);
-    srv.setCallback(f);
-	
-	// initialize the kernels
-	initKernels();
-
 }
 
 //image topic callback hook
@@ -115,10 +109,10 @@ void  VesselnessNodeBase::imgTopicCallback(const sensor_msgs::ImageConstPtr& msg
 
     // ROS_INFO("Converted image to opencv");
     
-	if (cv_ptrIn->image.size().height =! imgAllocSize.height || cv_ptrIn->image.size().width =! imgAllocSize.width )
+	if (cv_ptrIn->image.size().height != imgAllocSize.height || cv_ptrIn->image.size().width != imgAllocSize.width )
 	{
 	    ROS_INFO("Resizing the allocated matrices");
-		imgAllocSize = newSize(allocateMem(cv_ptrIn->image.size());
+		imgAllocSize = Size(this->allocateMem(cv_ptrIn->image.size()));
 	}
 	//Actual process segmentation code:
 
@@ -142,9 +136,14 @@ void  VesselnessNodeBase::imgTopicCallback(const sensor_msgs::ImageConstPtr& msg
 
 
 
-
 VesselnessNodeBase::~VesselnessNodeBase()
 {
+}
 
 
+void VesselnessNodeBase::setParamServer()
+{
+    //initialize the parameter server.
+    f = boost::bind(&VesselnessNodeBase::paramCallback, this, _1, _2);
+    srv.setCallback(f);
 }

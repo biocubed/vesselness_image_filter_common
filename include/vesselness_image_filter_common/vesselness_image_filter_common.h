@@ -52,7 +52,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <vesselness_image_filter_common/vesselness_params.h>
 #include <dynamic_reconfigure/server.h>
-#include <vesselness_image_filter_common/vesselness_params_config.h>
+#include <vesselness_image_filter_common/vesselness_params_Config.h>
 /*
  * This file introduces the abstract base class for the vesselness_image_filter nodes.
  * The Base Class is VesselnessNodeBase.
@@ -83,7 +83,7 @@ struct gaussParam{
 		{
 		    side = 3;
 		}
-		if(side%2 = 0)
+		if(side%2 == 0)
 		{
 		    side++;
 		}
@@ -91,7 +91,7 @@ struct gaussParam{
 	
 	// copy constructor
 	gaussParam(const gaussParam &src_):
-	    variance(src_.variance_),
+	    variance(src_.variance),
 		side(src_.side)
 	{  
 	}
@@ -100,6 +100,7 @@ struct gaussParam{
 	{
 	    variance = src_.variance;
 		side     = src_.side;
+        return *this;
 	}
 	
 };
@@ -118,7 +119,7 @@ struct segmentThinParam{
     float cParam;
 	
 	// copy constructor
-	segmentThinParam(segmentThinParam & src_):
+	segmentThinParam(const segmentThinParam & src_):
 	    hessProcess(src_.hessProcess),
 	    postProcess(src_.postProcess),
 	    betaParam(src_.betaParam),
@@ -126,13 +127,20 @@ struct segmentThinParam{
 	{
 	}
 	// element constructor
-	segmentThinParam(gaussParam &hessProcess_, gaussParam &postProcess_, float betaParam_, float cParam_):
+	/*segmentThinParam(const gaussParam &hessProcess_,const gaussParam &postProcess_, float betaParam_, float cParam_):
 	    hessProcess(hessProcess_),
 	    postProcess(postProcess_),
 	    betaParam(betaParam_),
 	    cParam(cParam_)
 	{
-	}
+	} */
+    segmentThinParam(gaussParam hessProcess_, gaussParam postProcess_, float betaParam_, float cParam_):
+        hessProcess(hessProcess_),
+        postProcess(postProcess_),
+        betaParam(betaParam_),
+        cParam(cParam_)
+    {
+    }
 	// assignment operator
 	segmentThinParam& operator= (const segmentThinParam& src_)
 	{
@@ -140,6 +148,7 @@ struct segmentThinParam{
 		postProcess = src_.postProcess;
 		betaParam   = src_.betaParam;
 		cParam      = src_.cParam;
+        return *this;
 	}
 };
 
@@ -167,10 +176,10 @@ private:
 
     image_transport::Subscriber image_sub_;
 
-    dynamic_reconfigure::Server<vesselness_image_filter_common::vesselness_params> srv;
-    dynamic_reconfigure::Server<vesselness_image_filter_common::vesselness_params>::CallbackType f;
+    dynamic_reconfigure::Server<vesselness_image_filter_common::vesselness_params_Config> srv;
+    dynamic_reconfigure::Server<vesselness_image_filter_common::vesselness_params_Config>::CallbackType f;
 
-	void paramCallback(vesselness_image_filter_common::vesselness_params &, uint32_t );
+	void paramCallback(vesselness_image_filter_common::vesselness_params_Config &, uint32_t );
 	
 protected:
 
@@ -248,6 +257,8 @@ public:
 	 * The function that sets the output channel count.
 	 */
 	void setOutputChannels(int);
+
+    void setParamServer();
 	
 };
 
