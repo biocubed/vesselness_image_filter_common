@@ -36,8 +36,6 @@
  */
 
 #include <ros/ros.h>
-#include <image_transport/image_transport.h>
-#include <cv_bridge/cv_bridge.h>
 #include <sensor_msgs/image_encodings.h>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -95,6 +93,7 @@ void  VesselnessNodeBase::imgTopicCallback(const sensor_msgs::ImageConstPtr& msg
     cv_bridge::CvImagePtr cv_ptrIn;
     cv_bridge::CvImage   cv_Out;
 
+    ROS_INFO("Got new image");
     //Attempt to pull the image into an opencv form.
     try
     {
