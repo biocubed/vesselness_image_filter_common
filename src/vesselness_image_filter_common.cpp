@@ -60,8 +60,8 @@ void VesselnessNodeBase::paramCallback(vesselness_image_filter_common::vesselnes
 	gaussParam hessParam_(config.variance_h,config.side_h);
     gaussParam postProcess_(config.variance_p,config.side_p);
 
-    float betaParam_ = config.beta;    //  betaParamIn;
-    float cParam_    = config.c;     //  cParamIn;
+    float betaParam_ = config.beta*config.beta;    //  betaParamIn;
+    float cParam_    = config.c*config.c;     //  cParamIn;
 
 	filterParameters =  segmentThinParam(hessParam_,postProcess_,betaParam_,cParam_);
 	kernelReady = false;
