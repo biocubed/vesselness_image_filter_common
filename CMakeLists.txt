@@ -51,6 +51,7 @@ add_library(vesselness_image_filter_common_lib
    src/vesselness_image_filter_common.cpp
  )
 
+add_dependencies(vesselness_image_filter_common_lib ${PROJECT_NAME}_msgs_generate_messages_cpp)
 add_dependencies(vesselness_image_filter_common_lib ${PROJECT_NAME}_gencfg)
 
 
