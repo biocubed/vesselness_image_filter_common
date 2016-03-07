@@ -78,7 +78,7 @@ VesselnessNodeBase::VesselnessNodeBase(const char* subscriptionChar,const char* 
 	filterParameters(gaussParam(1.5,5),gaussParam(2.0,7),0.1,0.005),
 	imgAllocSize(-1,-1),
 	kernelReady(false),
-	outputChannels(1)
+    outputChannels(-1)
 {
     // Subscribe to input video feed and publish output video feed
     image_sub_ = it_.subscribe(subscriptionChar, 1,
@@ -123,11 +123,25 @@ void  VesselnessNodeBase::imgTopicCallback(const sensor_msgs::ImageConstPtr& msg
     cv_Out.image = outputImage;
     //cv_Out.header =  cv_ptrIn->header;
 
-    if(outputChannels == 1) cv_Out.encoding = std::string("32FC1");
-    if(outputChannels == 2) cv_Out.encoding = std::string("32FC2");
+    bool publish(false);
+    if(outputChannels == 1)
+    {
+        cv_Out.encoding = std::string("32FC1");
+        publish=true;
+    }
+    else if(outputChannels == 2)
+    {
+        cv_Out.encoding = std::string("32FC2");
+        publish = true;
+    }
+    else
+    {
+        ROS_INFO("The output is not properly set up");
+    }
 
     //publish the outputdata now.
-    image_pub_.publish(cv_Out.toImageMsg());
+    if(publish) image_pub_.publish(cv_Out.toImageMsg());
+    ROS_INFO("published new image");
     /*Mat outputImageDisp,preOutputImageDisp; */
 
 }

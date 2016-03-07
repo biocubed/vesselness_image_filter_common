@@ -50,7 +50,6 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
-#include <vesselness_image_filter_common/vesselness_params.h>
 #include <dynamic_reconfigure/server.h>
 #include <vesselness_image_filter_common/vesselness_params_Config.h>
 /*
