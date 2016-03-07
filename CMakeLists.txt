@@ -10,8 +10,10 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   std_msgs
   message_generation
+  cwru_opencv_common
+  dynamic_reconfigure
 )
-find_package(catkin REQUIRED dynamic_reconfigure)
+
 
 add_message_files(
     FILES
@@ -41,6 +43,7 @@ SET(LIB_TYPE STATIC)
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
+  ${catkin_INCLUDES}
   ${dynamic_reconfigure_PACKAGE_PATH}/cmake/cfgbuild.cmake
 )
 
