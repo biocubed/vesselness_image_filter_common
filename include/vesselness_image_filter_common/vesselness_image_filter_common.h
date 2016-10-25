@@ -51,7 +51,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <dynamic_reconfigure/server.h>
-#include <vesselness_image_filter_common/vesselness_params_Config.h>
+#include <vesselness_image_filter/vesselness_params_Config.h>
 /*
  * This file introduces the abstract base class for the vesselness_image_filter nodes.
  * The Base Class is VesselnessNodeBase.

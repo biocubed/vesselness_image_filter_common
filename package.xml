@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-  <name>vesselness_image_filter_common</name>
+  <name>vesselness_image_filter</name>
   <version>0.0.0</version>
   <description>The vesselness_image_filter package</description>
 
