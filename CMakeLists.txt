@@ -35,7 +35,7 @@ generate_dynamic_reconfigure_options(
 
 catkin_package(
     INCLUDE_DIRS include
-    LIBRARIES vesselness_image_filter_common_lib
+    LIBRARIES vesselness_lib
     CATKIN_DEPENDS dynamic_reconfigure image_transport cv_bridge
 )
 
