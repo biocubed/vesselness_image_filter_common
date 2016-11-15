@@ -88,7 +88,8 @@ add_library(vesselness_image_filter_bw_cpu_lib
 
 if(CUDA_FOUND)
 
-#CUDA_ADD_LIBRARY(vesselness_image_filter_gpu_kernels_lib src_cu/vesselness_image_filter_kernels.cu)
+
+
 CUDA_ADD_LIBRARY(vesselness_image_filter_gpu_lib src/gpu/cu/vesselness_image_filter_gpu.cu)
 
 CUDA_ADD_LIBRARY(vesselness_viewer_gpu_lib src/gpu/cu/vesselness_viewer_kernel.cu)
@@ -105,9 +106,10 @@ ADD_EXECUTABLE(vesselness_image_filter_cpu_viewer_node src/cpu/vesselness_image_
 
 if(CUDA_FOUND)
 
-CUDA_ADD_LIBRARY(vesselness_viewer_gpu_lib src_cu/vesselness_viewer_kernel.cu)
-CUDA_ADD_EXECUTABLE(vesselness_image_filter_gpu_node src/vesselness_image_filter_gpu_node.cpp)
-CUDA_ADD_EXECUTABLE(vesselness_viewer_gpu_node src/vesselness_image_viewer_gpu_node.cpp)
+
+CUDA_ADD_EXECUTABLE(vesselness_image_filter_gpu_node src/gpu/cpp/vesselness_image_filter_gpu_node.cpp)
+CUDA_ADD_EXECUTABLE(vesselness_viewer_gpu_node src/gpu/cpp/vesselness_image_viewer_gpu_node.cpp)
+
 
 endif()
 
@@ -123,7 +125,7 @@ add_dependencies(vesselness_lib ${PROJECT_NAME}_gencfg)
 
 add_dependencies(vesselness_lib ${PROJECT_NAME}_gencfg)
 
-add_dependencies(vesselness_image_filter_common_lib ${PROJECT_NAME}_gencfg)
+
 
 target_link_libraries(vesselness_image_filter_cpu_lib
   vesselness_image_filter_common_lib
@@ -168,6 +170,7 @@ if(CUDA_FOUND)
 
 target_link_libraries(vesselness_viewer_gpu_node
    vesselness_viewer_gpu_lib
+   vesselness_image_filter_common_lib
    ${CUDA_LIBRARIES}
    ${OpenCV_LIBRARIES}
    ${catkin_LIBRARIES}
@@ -186,7 +189,7 @@ target_link_libraries(vesselness_viewer_gpu_lib
 #)
 
 target_link_libraries(vesselness_image_filter_gpu_lib
-   #vesselness_image_filter_gpu_kernels_lib
+   vesselness_image_filter_common_lib
    ${CUDA_LIBRARIES}
    ${OpenCV_LIBRARIES}
    ${catkin_LIBRARIES}
