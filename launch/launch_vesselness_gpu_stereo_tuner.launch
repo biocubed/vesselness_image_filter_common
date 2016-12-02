@@ -1,0 +1,18 @@
+<launch>
+      <node name="thread_left_vessel" pkg="vesselness_image_filter" type="vesselness_image_filter_gpu_node">
+         <remap from="image_in" to="/nurbs_sim/left/image" />
+         <remap from="image_thin" to="/nurbs_sim/left/image_thin" />
+      </node>
+      <node name="thread_right_vessel" pkg="vesselness_image_filter" type="vesselness_image_filter_gpu_node">
+         <remap from="image_in" to="/nurbs_sim/right/image" />
+         <remap from="image_thin" to="/nurbs_sim/right/image_thin" />
+      </node>
+      <node name="thread_right_vessel_view" pkg="vesselness_image_filter" type="vesselness_viewer_gpu_node">
+         <remap from="image_thin" to="/nurbs_sim/right/image_thin" />
+      </node>
+      <node name="thread_left_vessel_view" pkg="vesselness_image_filter" type="vesselness_viewer_gpu_node">
+         <remap from="image_thin" to="/nurbs_sim/left/image_thin" />
+      </node>
+      <node name="vessel_settings" pkg="rqt_reconfigure" type="rqt_reconfigure">
+      </node>
+</launch>
