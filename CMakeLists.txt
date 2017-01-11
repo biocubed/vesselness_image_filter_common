@@ -49,7 +49,6 @@ if(CUDA_FOUND)
   endif()
 endif()
 
-
 # If necessary set the nvidia build flags for the GPU architecture.
 if(CUDA_FOUND AND OpenCV_CUDA_VERSION)
   SET(CUDA_NVCC_FLAGS "-arch=compute_30" CACHE STRING "nvcc flags" FORCE)
