@@ -1,20 +1,19 @@
-#Standard message to define the vesselness filter parameters
+# Standard message to define the vesselness filter parameters
 
-#pre process kernel size.
+# pre process kernel size.
 int32 hessianSide
 
-#pre process variance
+# pre process variance
 float32 hessianVariance
 
-#post process kernel size
+# post process kernel size
 int32 postProcessSide
 
-#pose process variance
+# post process variance
 float32 postProcessVariance
 
-#eigen value norm param
+# eigen value norm param
 float32 cParameter
 
-#eigen value ratio param
+# eigen value ratio param
 float32 betaParameter
-

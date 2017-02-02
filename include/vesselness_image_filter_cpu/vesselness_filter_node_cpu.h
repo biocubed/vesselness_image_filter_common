@@ -35,94 +35,120 @@
  *
  */
 
-#ifndef IMAGESEGMENTCPUH
-#define IMAGESEGMENTCPUH
-
+#ifndef VESSELNESS_IMAGE_FILTER_CPU_VESSELNESS_FILTER_NODE_CPU_H
+#define VESSELNESS_IMAGE_FILTER_CPU_VESSELNESS_FILTER_NODE_CPU_H
 
 #include <vesselness_image_filter_common/vesselness_image_filter_common.h>
 
-
-
-//This class extends the basic VesselnessNode based on using a CPU to complete the actual processing.
-class VesselnessNodeCPU: public VesselnessNodeBase {
-
+/**
+ * @brief The vesselness node class which extends the vesselness base class.
+ *
+ * This class is based on CPU processing.
+ */
+class VesselnessNodeCPU: public VesselnessNodeBase
+{
 private:
+  /**
+   * @brief the gray input image.
+   */
+  cv::Mat grayImage_;
 
-    //Input and output information
-    cv::Mat input;
-    cv::Mat output;
+  /**
+   * @brief the gray floating point input image.
+   */
+  cv::Mat grayFloat_;
 
-    //Intermediates:
-    cv::Mat cXX;
-    cv::Mat cXY;
-    cv::Mat cYY;
+  /**
+   * @brief the XX gray image.
+   */
+  cv::Mat grayImage_xx_;
 
-    cv::Mat greyImage_xx;
-    cv::Mat greyImage_xy;
-    cv::Mat greyImage_yy;
+  /**
+   * @brief the XY gray image.
+   */
+  cv::Mat grayImage_xy_;
 
-    cv::Mat inputGreyG;
-    cv::Mat inputFloat255G;
-    cv::Mat ones;
-    cv::Mat inputFloat1G;
+  /**
+   * @brief the YY gray image.
+   */
+  cv::Mat grayImage_yy_;
 
-    cv::Mat preOutput;
+  /**
+   * @brief the preoutput image.
+   */
+  cv::Mat preOutput_;
 
-    cv::Mat scaled;
-    cv::Mat scaledU8;
-    cv::Mat dispOut;
+  /**
+   * @brief the XX gaussian kernel.
+   */
+  cv::Mat gaussKernel_XX_;
 
-    //Gauss kernels
-    cv::Mat gaussKernel_XX;
-    cv::Mat gaussKernel_XY;
-    cv::Mat gaussKernel_YY;
-    cv::Mat imageMask;
+  /**
+   * @brief the XY gaussian kernel.
+   */
+  cv::Mat gaussKernel_XY_;
 
-    cv::Mat greyFloat;
-    cv::Mat greyImage;
+  /**
+   * @brief the YY gaussian kernel.
+   */
+  cv::Mat gaussKernel_YY_;
 
+  /**
+   * @brief the image filtering mask.
+   */
+  cv::Mat imageMask_;
 
-    cv::Mat srcMats;
-    cv::Mat dstMats;
+  /**
+   * @brief initialize the required gaussian kernels.
+   */
+  void initKernels() override;
 
+  /**
+   * @brief The allocate memory function. 
+   *
+   * required for class instantiation.
+   *
+   * @param size of matrices to allocate.
+   */
+  cv::Size allocateMem(const cv::Size &sizeIn);
 
-    //status booleans
-    bool kernelReady;
-    bool allocatedKernels;
+  /**
+   * @brief deallocates the class memory
+   *
+   * required for class instatiation.
+   */
+  void deallocateMem();
 
+  /**
+   * @brief segments the image using a BW output.
+   *
+   * @param input image
+   * @param output image
+   */
+  void segmentImage(const cv::Mat &src, cv::Mat &dst);
 
-    void  setKernels();
-    void  initKernels() override;
-    void  updateKernels();
-
-
-
-    //declare the memory management functions
-    //void allocateMem(Size); (declared in the abstract base class)
-    cv::Size allocateMem(const cv::Size&);
-    void deallocateMem();
-
-    /*TODO void VesselnessNodeGPU::findOutputCutoffs(float*,int = 10); */
-
-    //blocking image segmentation
-    void segmentImage(const cv::Mat &, cv::Mat &);
-
-    
-    //Update object parameters.
-    void updateKernels(const segmentThinParam &);
-	
+  /**
+   * @brief updates the image processing kernels.
+   *
+   * Not yet implemented
+   *
+   * @param the new kernel parameters.
+   */
+  void updateKernels(const segmentThinParam & segParams);
 
 public:
-   
-    //This function needs to operate at peak speed:
-    VesselnessNodeCPU(const char*,const char*); //constructor
-    VesselnessNodeCPU();    //default constructor
-    ~VesselnessNodeCPU();   //deconstructor
+  /**
+   * @brief The explicit constructor
+   *
+   * @param the subscribed image topic.
+   * @param the published image topic.
+   */
+  VesselnessNodeCPU(const char* subTopic, const char* pubTopic);
 
+  /**
+   * @brief the deconstructor.
+   */
+  ~VesselnessNodeCPU();
 };
 
-
-
-
-
-#endif
+#endif   // VESSELNESS_IMAGE_FILTER_CPU_VESSELNESS_FILTER_NODE_CPU_H

@@ -37,8 +37,8 @@
 
 
 
-#ifndef GPUKERNELS_H
-#define GPUKERNELS_H
+#ifndef VESSELNESS_IMAGE_FILTER_GPU_VESSELNESS_IMAGE_FILTER_KERNELS_H
+#define VESSELNESS_IMAGE_FILTER_GPU_VESSELNESS_IMAGE_FILTER_KERNELS_H
 
 #include <cuda_runtime.h>
 #include <opencv2/core/cuda.hpp>
@@ -47,20 +47,64 @@
 #include <opencv2/cudafilters.hpp>
 
 
-/*GPU kernel defs:*/
 
-using namespace cv::cuda;
+/**
+ * @brief generates the gaussian derivative XX kernel.
+ *
+ * @param pointer to the kernel
+ * @param kernel variance
+ * @param offset to kernel center.
+ */
+__global__ void genGaussHessKernel_XX(cv::cuda::PtrStepSzf output, float var, int offset);
+
+/**
+ * @brief generates the gaussian derivative XY kernel.
+ *
+ * @param pointer to the kernel
+ * @param kernel variance
+ * @param offset to kernel center.
+ */
+__global__ void genGaussHessKernel_XY(cv::cuda::PtrStepSzf output, float var, int offset);
+
+/**
+ * @brief generates the gaussian derivative YY kernel.
+ *
+ * @param pointer to the kernel
+ * @param kernel variance
+ * @param offset to kernel center.
+ */
+__global__ void genGaussHessKernel_YY(cv::cuda::PtrStepSzf output, float var, int offset);
 
 
-__global__ void genGaussHessKernel_XX(PtrStepSzf output,float var,int offset);
+/**
+ * @brief Computes the vesselness of the image.
+ *
+ * @param const pointer to the XX hessian
+ * @param const pointer to the XY hessian
+ * @param const pointer to the YY hessian
+ *
+ * @param pointer to the output image
+ * @param betaParam eigen ratio sensitivity
+ * @param cParam eigen mag sensitivity. 
+ *
+ * This function uses XX, XY, and YY as a 2x2 symmetric matrix and compute its eigenvalues.
+ * The ratio and magnitude of these eigenvalues are used to compute the vesselness (2 channel 32 bit floating image).
+ * the vesselness has a normal direction between 0 and pi. (channel 0)
+ * the vesselness has a magnitude (channel 1)
+ */
+__global__ void computeVesselness(
+  const cv::cuda::PtrStepSzf XX, const cv::cuda::PtrStepSzf XY, const cv::cuda::PtrStepSzf YY,
+  cv::cuda::PtrStepSz<float2> output, float betaParam, float cParam);
 
-__global__ void genGaussHessKernel_XY(PtrStepSzf output,float var,int offset);
+/**
+ * @brief blurs a vesselness image by summing the vesselness vectors scaled with a gaussian kernel.
+ *
+ * @param pointer to the source image (to be blurred)
+ * @param pointer to the destination matrix (blurred)
+ * @param pointer to the gaussian kernel matrix.
+ * @param gaussian kernel offset.
+ */
+__global__ void gaussAngBlur(const cv::cuda::PtrStepSz<float2> srcMat, cv::cuda::PtrStepSz<float2> dstMat,
+  cv::cuda::PtrStepSzf gMat, int gaussOff);
 
-__global__ void genGaussHessKernel_YY(PtrStepSzf output,float var,int offset);
-
-__global__ void generateEigenValues(const PtrStepSzf XX,const PtrStepSzf XY,const PtrStepSzf YY,PtrStepSz<float2> output,float betaParam,float cParam);
-
-__global__ void gaussAngBlur(const PtrStepSz<float2> srcMat,PtrStepSz<float2> dstMat,PtrStepSzf gMat,int gaussOff);
-
-
-#endif
+#endif  // VESSELNESS_IMAGE_FILTER_GPU_VESSELNESS_IMAGE_FILTER_KERNELS_H

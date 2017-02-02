@@ -42,32 +42,35 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <vesselness_image_filter_cpu/vesselness_lib.h>
-using namespace cv;
-
-static const std::string OPENCV_WINDOW = "Image window";
+#include <string>
 
 class ImageConverter
 {
   ros::NodeHandle nh_;
   image_transport::ImageTransport it_;
   image_transport::Subscriber image_sub_;
-  
+
+  std::string windowNodeName;
+
 public:
   ImageConverter()
-    : it_(nh_)
+    :it_(nh_)
   {
-    // Subscrive to input video feed and publish output video feed
-    image_sub_ = it_.subscribe("image_thin", 1, 
+    // Subscribe to input video feed and display output video feed
+    // use the image callback to display the image.
+    // TODO(biocubed) understand how using opencv HIGHGUI with  libQT vs. libGTK makes a difference.
+    image_sub_ = it_.subscribe("image_thin", 1,
       &ImageConverter::imageCb, this);
-  
-    cv::namedWindow(OPENCV_WINDOW);
-    cv::startWindowThread();
 
+    windowNodeName = ros::this_node::getName();
+
+    cv::namedWindow(windowNodeName);
+    cv::startWindowThread();
   }
 
   ~ImageConverter()
   {
-    cv::destroyWindow(OPENCV_WINDOW);
+    cv::destroyWindow(windowNodeName);
   }
 
   void imageCb(const sensor_msgs::ImageConstPtr& msg)
@@ -82,38 +85,37 @@ public:
       ROS_ERROR("cv_bridge exception: %s", e.what());
       return;
     }
-
     if (msg->encoding.compare(std::string("32FC2")) == 0)
     {
         ROS_INFO("Converting two channel image");
-        Mat outputImage;
-        convertSegmentImageCPU(cv_ptr->image,outputImage);
+        cv::Mat outputImage;
+        convertSegmentImageCPU(cv_ptr->image, outputImage);
 
         ROS_INFO("Showing Image");
         // Update GUI Window
-        cv::imshow(OPENCV_WINDOW, outputImage);
+        cv::imshow(windowNodeName, outputImage);
         cv::waitKey(3);
     }
     else if (msg->encoding.compare(std::string("32FC1")) == 0)
     {
         ROS_INFO("Converting single channel image");
-        Mat outputImage;
-        
-        convertSegmentImageCPUBW(cv_ptr->image,outputImage);
-       
-        cv::imshow(OPENCV_WINDOW, outputImage);
+        cv::Mat outputImage;
+
+        convertSegmentImageCPUBW(cv_ptr->image, outputImage);
+
+        cv::imshow(windowNodeName, outputImage);
         cv::waitKey(3);
     }
     else ROS_INFO("Invalid Image");
-
-
-    }
+  }
 };
 
 int main(int argc, char** argv)
 {
   ros::init(argc, argv, "image_viewer");
   ImageConverter ic;
+  ROS_INFO("Ready to convert images");
   ros::spin();
+  ROS_INFO("Quitting the image viewer...");
   return 0;
 }
