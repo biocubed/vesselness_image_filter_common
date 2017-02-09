@@ -46,20 +46,16 @@
 #include <vesselness_image_filter_gpu/vesselness_image_filter_gpu.h>
 
 
-//This file instantiates a node object of the vesselness gpu node.
+// This file instantiates a node object of the vesselness gpu node.
 int main(int argc, char** argv)
 {
-  
   ros::init(argc, argv, "image_vesselness_filter_gpu");
-  VesselnessNodeGPU vs("image_in","image_thin");
-  
+  VesselnessNodeGPU vs("image_in", "image_thin");
+
   ROS_INFO("ready to process images");
 
- 
-  while(ros::ok())
-  {
-  	ros::spinOnce();
-  }
-  ROS_INFO("Quiting the vesselness GPU node\n");
+  ros::spin();
+
+  ROS_INFO("Quiting the vesselness GPU node...");
   return 0;
 }

@@ -45,194 +45,176 @@
 
 #include <vesselness_image_filter_cpu/vesselness_filter_node_cpu_bw.h>
 
-using namespace cv;
 
-void VesselnessNodeCPUBW::deallocateMem()
+// constructor.
+VesselnessNodeCPUBW::VesselnessNodeCPUBW(const char* subscriptionChar, const char* publicationChar):
+  VesselnessNodeBase(subscriptionChar, publicationChar)
 {
-
-
+  // initialize the kernels
+  outputChannels_ = 1;
+  initKernels();
+  setParamServer();
 }
 
-VesselnessNodeCPUBW::VesselnessNodeCPUBW(const char* subscriptionChar,const char* publicationChar):VesselnessNodeBase(subscriptionChar,publicationChar)
+// initializes the hessian kernels.
+void VesselnessNodeCPUBW::initKernels()
 {
-    // initialize the kernels
-    outputChannels = 1;
-    initKernels();
-    setParamServer();
+  double var(filterParameters_.hessProcess.variance);
+
+  // Allocate the matrices
+  gaussKernel_XX_ = cv::Mat(filterParameters_.hessProcess.side, filterParameters_.hessProcess.side, CV_32F);
+  gaussKernel_XY_ = cv::Mat(filterParameters_.hessProcess.side, filterParameters_.hessProcess.side, CV_32F);
+  gaussKernel_YY_ = cv::Mat(filterParameters_.hessProcess.side, filterParameters_.hessProcess.side, CV_32F);
+
+  int kSizeEnd = static_cast<int> (filterParameters_.hessProcess.side-1)/2;
+
+  for (int ix = -kSizeEnd; ix < kSizeEnd+1; ix++)
+  {
+    for (int iy = -kSizeEnd; iy < kSizeEnd+1; iy++)
+    {
+      float ixD = static_cast<float>  (ix);
+      float iyD = static_cast<float>  (iy);
+
+      gaussKernel_XX_.at<float>(iy+kSizeEnd, ix+kSizeEnd) =
+        (ixD*ixD)/(var*var)*gaussFnc(var, ixD, iyD)-1/(var)*gaussFnc(var, ixD, iyD);
+
+      gaussKernel_YY_.at<float>(iy+kSizeEnd, ix+kSizeEnd) =
+        (iyD*iyD)/(var*var)*gaussFnc(var, ixD, iyD)-1/(var)*gaussFnc(var, ixD, iyD);
+
+      gaussKernel_XY_.at<float>(iy+kSizeEnd, ix+kSizeEnd) = (iyD*ixD)/(var*var)*gaussFnc(var, ixD, iyD);
+    }
+  }
 }
 
 
-void VesselnessNodeCPUBW::initKernels(){
+// image segmentation:
+void  VesselnessNodeCPUBW::segmentImage(const cv::Mat& src, cv::Mat& dst)
+{
+  float betaParam(filterParameters_.betaParam);
+  float cParam(filterParameters_.cParam);
 
-    double var(filterParameters.hessProcess.variance);
+  // Actual process segmentation code:
+  cv::cvtColor(src, grayImage_, CV_BGR2GRAY);
+  grayImage_.convertTo(grayFloat_, CV_32FC1, 1.0, 0.0);
 
-    //Allocate the matrices
-    gaussKernel_XX =Mat(filterParameters.hessProcess.side,filterParameters.hessProcess.side,CV_32F);
-    gaussKernel_XY =Mat(filterParameters.hessProcess.side,filterParameters.hessProcess.side,CV_32F);
-    gaussKernel_YY =Mat(filterParameters.hessProcess.side,filterParameters.hessProcess.side,CV_32F);
+  // @TODO Replace the C style pointer casting with the reinterpret_cast
 
-    int kSizeEnd = (int) (filterParameters.hessProcess.side-1)/2;
+  float *grayFloatPtr = reinterpret_cast<float*> (grayFloat_.data);
+  grayFloat_ /= 255.0;
 
-    for(int ix = -kSizeEnd; ix < kSizeEnd+1; ix++){
-        for(int iy = -kSizeEnd; iy < kSizeEnd+1; iy++){
 
-            float ixD = (float) ix;
-            float iyD = (float) iy;
+  // Gaussian Blur filtering (XX,XY,YY);
+  cv::filter2D(grayFloat_, grayImage_xx_, -1, gaussKernel_XX_);
+  cv::filter2D(grayFloat_, grayImage_xy_, -1, gaussKernel_XY_);
+  cv::filter2D(grayFloat_, grayImage_yy_, -1, gaussKernel_YY_);
 
-            gaussKernel_XX.at<float>(iy+kSizeEnd,ix+kSizeEnd) = (ixD*ixD)/(var*var)*gaussFnc(var,ixD,iyD)-1/(var)*gaussFnc(var,ixD,iyD);
+  std::cout << "Blurred images" << std::endl;
 
-            gaussKernel_YY.at<float>(iy+kSizeEnd,ix+kSizeEnd) = (iyD*iyD)/(var*var)*gaussFnc(var,ixD,iyD)-1/(var)*gaussFnc(var,ixD,iyD);
+  // Compute the number of total pixels
+  int pixCount = grayImage_xx_.rows*grayImage_xx_.cols;
 
-            gaussKernel_XY.at<float>(iy+kSizeEnd,ix+kSizeEnd) = (iyD*ixD)/(var*var)*gaussFnc(var,ixD,iyD);
-        }
+
+  // pull out the image data pointers
+  float *gradPtr_xx = reinterpret_cast<float*> (grayImage_xx_.data);
+  float *gradPtr_yx = reinterpret_cast<float*> (grayImage_xy_.data);
+  float *gradPtr_xy = reinterpret_cast<float*> (grayImage_xy_.data);
+  float *gradPtr_yy = reinterpret_cast<float*> (grayImage_yy_.data);
+
+  preOutput_.create(grayImage_xx_.rows, grayImage_xx_.cols, CV_32FC1);
+  char* preOutputImagePtr = reinterpret_cast<char*> (preOutput_.data);
+
+  int preOutputImageStep0 =  preOutput_.step[0];
+  int preOutputImageStep1 =  preOutput_.step[1];
+
+
+  char* inputMaskPtr = reinterpret_cast<char*> (imageMask_.data);
+
+  int inputMaskStep0 =  imageMask_.step[0];
+  int inputMaskStep1 =  imageMask_.step[1];
+
+
+  // evaluate the hessian eigen vectors
+  // use that information to generate the vesselness
+  for (int i = 0; i < pixCount; i++)
+  {
+    int xPos =  i%grayImage_xx_.cols;
+    int yPos =  static_cast<int> (floor(static_cast<float> (i)/static_cast<float> (grayImage_.cols)));
+
+    // construct the output pointer
+    float* prePointer =  reinterpret_cast<float*>
+      (preOutputImagePtr+ preOutputImageStep0*yPos + preOutputImageStep1*xPos);
+
+    // If the mask is valid, use it to select points
+    if (imageMask_.rows == imageMask_.rows && imageMask_.cols == preOutput_.cols)
+    {
+      char* maskVal = (inputMaskPtr+ inputMaskStep0*yPos + inputMaskStep1*xPos);
+
+      if (maskVal[0] == 0)
+      {
+        prePointer[0] = 0.0;
+        continue;
+      }
+    }  // if(inputMask.rows == preOutput_.rows && inputMask.cols == preOutput_.cols)
+
+    float vMag(0.0);
+    float v_y(0.0);
+    float v_x(1.0);
+    float a2(0.0);
+
+    float det(gradPtr_xx[i]*gradPtr_yy[i]-gradPtr_yx[i]*gradPtr_yx[i]);
+    float b(-gradPtr_xx[i]-gradPtr_yy[i]);
+    float c(det);
+    float descriminant(sqrt(b*b-4*c));
+
+    float eig0;
+    float eig1;
+    float r_Beta;
+
+
+    // Check if the eigenvalue is repeated.
+    if (descriminant > 0.000000001)
+    {
+      eig0 = (-b+descriminant)/(2);
+      eig1 = (-b-descriminant)/(2);
+
+      r_Beta = eig0/eig1;
+
+      // find the dominant eigenvector:
+      if (abs(r_Beta) > 1.0)  // indicates that eig0 is larger.
+      {
+        r_Beta = 1/r_Beta;
+      }
+    }  // if(descriminant > 0.000000001)
+    else
+    {
+      eig0 = eig1 = -b/2;
+      r_Beta = 1.0;
+      v_y = 0.00;
+      v_x = 1.0;
     }
-}
 
+    // In this formulation, the image peak is 1.0.
+    vMag = exp(-r_Beta*r_Beta/(betaParam))*(1-exp(-(eig0*eig0+eig1*eig1)/(cParam)));
 
-
-
-void  VesselnessNodeCPUBW::segmentImage(const Mat& src,Mat& dst) {
-
-    float betaParam(filterParameters.betaParam);
-    float cParam(filterParameters.cParam);
-    //Actual process segmentation code:
-    cvtColor(src,greyImage,CV_BGR2GRAY);
-    greyImage.convertTo(greyFloat,CV_32FC1,1.0,0.0);
-
-    float *greyFloatPtr = (float*) greyFloat.data;
-    greyFloat /= 255.0;
-
-    //Gaussian Blur filtering (XX,XY,YY);
-    filter2D(greyFloat,greyImage_xx,-1,gaussKernel_XX);
-    filter2D(greyFloat,greyImage_xy,-1,gaussKernel_XY);
-    filter2D(greyFloat,greyImage_yy,-1,gaussKernel_YY);
-
-    std::cout << "Blurred images" << std::endl;
-
-    //Compute the number of total pixels
-    int pixCount = greyImage_xx.rows*greyImage_xx.cols;
-
-
-    //pull out the image data pointers
-    float *gradPtr_xx = (float*)  greyImage_xx.data;
-    float *gradPtr_yx = (float*)  greyImage_xy.data;
-    float *gradPtr_xy = (float*)  greyImage_xy.data;
-    float *gradPtr_yy = (float*)  greyImage_yy.data;
-
-    preOutput.create(greyImage_xx.rows,greyImage_xx.cols,CV_32FC1);
-    char* preOutputImagePtr = (char*) preOutput.data;
-
-    int preOutputImageStep0 =  preOutput.step[0];
-    int preOutputImageStep1 =  preOutput.step[1];
-
-
-    char* inputMaskPtr = (char*) imageMask.data;
-
-    int inputMaskStep0 =  imageMask.step[0];
-    int inputMaskStep1 =  imageMask.step[1];
-
-
-    std::cout << "at while loop" << std::endl;
-
-    //From Frangi et al.
-    //for each image, evaluate its eigen vectors, then look at the cost
-	for(int i =0 ; i < pixCount; i++){
-		
-		int xPos =  i%greyImage_xx.cols;
-		int yPos =  (int) floor(((float) i)/((float) greyImage.cols));
-
-		//construct the output pointer
-		float* prePointer =  (float*) (preOutputImagePtr+ preOutputImageStep0*yPos + preOutputImageStep1*xPos); 
-
-		//If the mask is valid, use it to select points
-		if(imageMask.rows == imageMask.rows && imageMask.cols == preOutput.cols){
-			char* maskVal = (inputMaskPtr+ inputMaskStep0*yPos + inputMaskStep1*xPos); 
-
-			if(maskVal[0] == 0)
-			{
-                prePointer[0] = 0.0;
-				continue;
-			}
-		} //if(inputMask.rows == preOutput.rows && inputMask.cols == preOutput.cols)
-				
-
-		float vMag =0.0;
-		float v_y  =0.0;
-		float v_x  =1.0;
-		float a2   =0.0;
-
-				
-		float det = gradPtr_xx[i]*gradPtr_yy[i]-gradPtr_yx[i]*gradPtr_yx[i];
-		float b = -gradPtr_xx[i]-gradPtr_yy[i];
-		float c =  det;
-		float descriminant = sqrt(b*b-4*c);
-
-		float eig0;
-		float eig1;
-		float r_Beta;
-
-					
-		//adding safety for small values of the descriminant.
-		if(descriminant > 0.000000001) 
-		{
-
-			eig0 = (-b+descriminant)/(2);
-			eig1 = (-b-descriminant)/(2);
-
-			r_Beta = eig0/eig1;
-
-			//find the dominant eigenvector:
-			if(abs(r_Beta) > 1.0)  //indicates that eig0 is larger.
-			{
-				
-				r_Beta = 1/r_Beta;		
-
-			}
-		} //if(descriminant > 0.000000001) 
-		else
-        {
-
-            eig0 = eig1 = -b/2;
-            r_Beta = 1.0;
-            v_y = 0.00;
-            v_x = 1.0;
-
-        }
-
-        //In this formulation, the image peak is 1.0;	
-        vMag = exp(-r_Beta*r_Beta/(betaParam))*(1-exp(-(eig0*eig0+eig1*eig1)/(cParam)));
-
-
-        if(!(vMag <= 1) || !(vMag >= 0))
-        {
-            float test = 1;
-        }
-
-        prePointer[0] = vMag;
-
+    // error handling
+    if (!(vMag <= 1) || !(vMag >= 0))
+    {
+      float test = 1;
     }
-    //Once all is said and done, blur the final image using a gaussian.
-    dst.create(src.size(),src.type());
-    Size kernelSize(filterParameters.postProcess.side,filterParameters.postProcess.side);
-    GaussianBlur(preOutput,dst,kernelSize,filterParameters.postProcess.variance,filterParameters.postProcess.variance);
+    prePointer[0] = vMag;
+  }
+    // Finally blur the final image using a gaussian.
+    dst.create(src.size(), src.type());
+    cv::Size kernelSize(filterParameters_.postProcess.side, filterParameters_.postProcess.side);
+    cv::GaussianBlur(preOutput_, dst, kernelSize,
+      filterParameters_.postProcess.variance, filterParameters_.postProcess.variance);
 
     return;
 }
 
-
-
-//destructor function
-VesselnessNodeCPUBW::~VesselnessNodeCPUBW(){
-    //clean up the Mats and memory
-
-
-
-}
-
-
-Size VesselnessNodeCPUBW::allocateMem(const Size &sizeIn){
-
-    imgAllocSize = sizeIn;
-    outputImage.create(imgAllocSize,CV_32FC1);
-    return imgAllocSize;
+cv::Size VesselnessNodeCPUBW::allocateMem(const cv::Size &sizeIn)
+{
+  imgAllocSize_ = sizeIn;
+  outputImage_.create(imgAllocSize_, CV_32FC1);
+  return imgAllocSize_;
 }

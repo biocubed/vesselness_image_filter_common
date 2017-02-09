@@ -46,19 +46,16 @@
 #include <vesselness_image_filter_cpu/vesselness_filter_node_cpu.h>
 
 
-//This file instantiates a node object of the vesselness cpu node.
+// This file instantiates a node object of the vesselness cpu node.
 int main(int argc, char** argv)
 {
-
     ros::init(argc, argv, "image_vesselness_filter_cpu");
-    VesselnessNodeCPU vs("image_in","image_thin");
+    VesselnessNodeCPU vs("image_in", "image_thin");
 
     ROS_INFO("ready to process images");
 
-    while(ros::ok())
-    {
-        ros::spinOnce();
-    }
-    ROS_INFO("Quiting the vesselness CPU node\n");
+    ros::spin();
+
+    ROS_INFO("Quiting the vesselness CPU node...");
     return 0;
 }

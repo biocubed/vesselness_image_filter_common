@@ -42,35 +42,39 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include "vesselness_image_filter_gpu/vesselness_viewer_kernels.h"
+#include <string>
 
-using namespace cv;
-//Converts a simgle image into a displayable RGB format.
-
-static const std::string OPENCV_WINDOW = "Image window";
-
+// Converts a single image into a displayable RGB format.
 class ImageConverter
 {
   ros::NodeHandle nh_;
   image_transport::ImageTransport it_;
   image_transport::Subscriber image_sub_;
   double averageRate;
+
+  std::string windowNodeName;
+
 public:
+  // Subscribe to input video feed and display output video feed
+  // use the image callback to display the image.
+  // @TODO understand how using opencv HIGHGUI with  libQT vs. libGTK makes a difference.
   ImageConverter()
     : it_(nh_),
     averageRate(0.0)
   {
     // Subscrive to input video feed and publish output video feed
-    image_sub_ = it_.subscribe("image_thin", 1, 
+    image_sub_ = it_.subscribe("image_thin", 1,
       &ImageConverter::imageCb, this);
-  
-    cv::namedWindow(OPENCV_WINDOW);
-    cv::startWindowThread();
 
+    windowNodeName = ros::this_node::getName();
+
+    cv::namedWindow(windowNodeName);
+    cv::startWindowThread();
   }
 
   ~ImageConverter()
   {
-    cv::destroyWindow(OPENCV_WINDOW);
+    cv::destroyWindow(windowNodeName);
   }
 
   void imageCb(const sensor_msgs::ImageConstPtr& msg)
@@ -87,28 +91,27 @@ public:
     }
 
     ros::Time begin = ros::Time::now();
-    Mat outputImage;
-    convertSegmentImageGPU(cv_ptr->image,outputImage);
+    cv::Mat outputImage;
+    // complete the gpu conversion
+    convertSegmentImageGPU(cv_ptr->image, outputImage);
     ros::Time end = ros::Time::now();
 
+    // for validation, the average processing rate is logged.
     double startTime = static_cast<double> (begin.nsec);
     double endTime = static_cast<double> (end.nsec);
-    double dt(startTime-endTime);
+    double dt(endTime-startTime);
     if (dt < 0)
     {
         dt += 1000000000;
     }
     double rate = 1000000000/(dt);
 
-    
     averageRate = rate;
 
-
-    ROS_INFO("Processing Speed %f Hz \x1b[1F",averageRate);
+    ROS_INFO("Processing Speed %f Hz \x1b[1F", averageRate);
     // Update GUI Window
-    cv::imshow(OPENCV_WINDOW, outputImage);
+    cv::imshow(windowNodeName, outputImage);
     cv::waitKey(1);
-
     }
 };
 

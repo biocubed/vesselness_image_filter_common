@@ -38,22 +38,52 @@
 
 
 
-#ifndef VESSELNESSCPULIBH
-#define VESSELNESSCPULIBH
+#ifndef VESSELNESS_IMAGE_FILTER_CPU_VESSELNESS_LIB_H
+#define VESSELNESS_IMAGE_FILTER_CPU_VESSELNESS_LIB_H
 
 
+/**
+ * @brief convert the segmented image into a displayable RGB format.
+ *
+ * This uses the CPU, (and is slower than a GPU version)
+ *
+ * @param src matrix 2 channel 32 bit float.
+ * @param dst BGR displayable 8bit 3 channel unsigned int.
+ */
+void convertSegmentImageCPU(const cv::Mat &src, cv::Mat &dst);
 
-// Converts a single image into a displayable RGB format.
-void convertSegmentImageCPU(const cv::Mat&,cv::Mat&);
+/**
+ * @brief convert the single channel segmented image into a displayable format.
+ *
+ * This uses the CPU, (and is slower than a GPU version)
+ *
+ * @param src matrix 1 channel 32 bit float.
+ * @param dst BGR displayable 8bit 3 channel unsigned int.
+ */
+void convertSegmentImageCPUBW(const cv::Mat &src, cv::Mat &dst);
 
-// Uses Otsu's method to find the mean cuttoff.
-void findOutputCutoff(const cv::Mat&, double *, int = 10);
+/**
+ * @brief Find the cutoff mean between the foreground and background of the segmented image.
+ *
+ * This uses OTSU's method on the CPU, (and is slower than a GPU version)
+ *
+ * @param src matrix 2 channel 32 bit float.
+ * @param pointer to the cutoff mean.
+ * @param number of iterations.
+ */
+void findOutputCutoff(const cv::Mat &src, double *cutoffMean, int iterations = 10);
 
-// grayscale image conversion
-void convertSegmentImageCPUBW(const cv::Mat&src,cv::Mat&dst);
 
-// This function computes the mean directiona nd magnitude for an image section.
-cv::Point2f angleMagMean(const cv::Mat &, const cv::Rect &);
+/**
+ * @brief This function computes the mean directiona nd magnitude for an image section.
+ *
+ * This uses the CPU, (and is slower than a GPU version)
+ *
+ * @param src matrix 2 channel 32 bit float.
+ * @param Rectangle defining the region of interest.
+ *
+ * @return the mean vector
+ */
+cv::Point2f angleMagMean(const cv::Mat &src, const cv::Rect &ROI);
 
-
- #endif
+#endif  // VESSELNESS_IMAGE_FILTER_CPU_VESSELNESS_LIB_H

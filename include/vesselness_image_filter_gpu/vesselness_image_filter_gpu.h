@@ -35,8 +35,8 @@
  *
  */
 
-#ifndef IMAGESEGMENTGPUH
-#define IMAGESEGMENTGPUH
+#ifndef VESSELNESS_IMAGE_FILTER_GPU_VESSELNESS_IMAGE_FILTER_GPU_H
+#define VESSELNESS_IMAGE_FILTER_GPU_VESSELNESS_IMAGE_FILTER_GPU_H
 
 #include <vesselness_image_filter_gpu/vesselness_image_filter_kernels.h>
 #include <vesselness_image_filter_common/vesselness_image_filter_common.h>
@@ -44,61 +44,145 @@
 
 
 
-//This class extends the basic VesselnessNode based on using a GPU to complete the actual processing.
-class VesselnessNodeGPU: public VesselnessNodeBase {
-
+/**
+ * @brief The vesselness node class which extends the vesselness base class.
+ *
+ * This class is based on GPU processing.
+ */
+class VesselnessNodeGPU: public VesselnessNodeBase
+{
 private:
-    /* private semi-static class members */
+  /**
+   * @brief the GPU side input image.
+   */
+  cv::cuda::GpuMat inputG_;
 
-   
-    cv::cuda::GpuMat inputG;
-    cv::cuda::GpuMat inputGreyG;
-	cv::cuda::GpuMat inputFloat255G;
-	cv::cuda::GpuMat ones;
-    cv::cuda::GpuMat inputFloat1G;
-    cv::cuda::GpuMat cXX;
-    cv::cuda::GpuMat cXY;
-    cv::cuda::GpuMat cYY;
-    cv::cuda::GpuMat preOutput;
-	cv::cuda::GpuMat outputG;
-    cv::cuda::GpuMat gaussG;
+  /**
+   * @brief the GPU side gray image.
+   */
+  cv::cuda::GpuMat inputGrayG_;
 
-    cv::cuda::HostMem dstMatMem;
-    cv::Mat dstMats;
+  /**
+   * @brief the GPU side floating point image.
+   */
+  cv::cuda::GpuMat inputFloat255G_;
 
-    //cv::Mat topKernel;
-    cv::Mat tempCPU_XX;
-    cv::Mat tempCPU_XY;
-    cv::Mat tempCPU_YY;
+  /**
+   * @brief the GPU side image of 1's
+   */
+  cv::cuda::GpuMat ones_;
+
+  /**
+   * @brief the GPU side float image (scaled to 0-1).
+   */
+  cv::cuda::GpuMat inputFloat1G_;
+
+  /**
+   * @brief the GPU side convolved Hessian XX Mat.
+   */
+  cv::cuda::GpuMat cXX_;
+
+  /**
+   * @brief the GPU side convolved Hessian XY Mat.
+   */
+  cv::cuda::GpuMat cXY_;
+
+  /**
+   * @brief the GPU side convolved Hessian YY Mat.
+   */
+  cv::cuda::GpuMat cYY_;
+
+  /**
+   * @brief the GPU side preOutput image.
+   */
+  cv::cuda::GpuMat preOutput_;
+
+  /**
+   * @brief the GPU side output image.
+   */
+  cv::cuda::GpuMat outputG_;
+
+  /**
+   * @brief the GPU side gaussian Mat.
+   */
+  cv::cuda::GpuMat gaussG_;
 
 
-    cv::Size allocateMem(const cv::Size&);
-	void deallocateMem();
+  /**
+   * @brief the CPU side page locked memory
+   */
+  cv::cuda::HostMem dstMatMem_;
+
+  /**
+   * @brief the output matrix.
+   */
+  cv::Mat dstMats_;
+
+  /**
+   * @brief the CPU side hessian XX Mat.
+   */
+  cv::Mat tempCPU_XX_;
+
+  /**
+   * @brief the CPU side hessian XY Mat.
+   */
+  cv::Mat tempCPU_XY_;
+
+  /**
+   * @brief the CPU side hessian YY Mat.
+   */
+  cv::Mat tempCPU_YY_;
 
 
-    //inherited required functions:
-    void segmentImage(const cv::Mat &, cv::Mat &);
-   
-   
+  /**
+   * @brief The allocate memory function. 
+   *
+   * required for class instantiation.
+   *
+   * @param size of matrices to allocate.
+   */
+  cv::Size allocateMem(const cv::Size &sizeIn);
+
+
+  /**
+   * @brief deallocates the class memory
+   *
+   * Deallocates the GPU memory and the page-locked memory.
+   * This is needed to prevent memory leaks.
+   */
+  void deallocateMem();
+
+
+  /**
+   * @brief segments the image with a 2 channel output.
+   *
+   * @param input image
+   * @param output image
+   */
+  void segmentImage(const cv::Mat &src, cv::Mat &dst);
+
 public:
+  /**
+   * @brief initialize the required gaussian kernels.
+   */
+  void  initKernels() override;
 
 
-    void  initKernels() override;
+  /**
+   * @brief The explicit constructor
+   *
+   * @param the subscribed image topic.
+   * @param the published image topic.
+   */
+  explicit VesselnessNodeGPU(const char* subscriptionChar, const char* publicationChar);
 
-    explicit VesselnessNodeGPU(const char* subscriptionChar,const char* publicationChar);
-
-    ~VesselnessNodeGPU();   //deconstructor
-
-
-
-
-    
-
-
+  /**
+   * @brief the deconstructor.
+   *
+   * This function cleans up the class memory
+   */
+  ~VesselnessNodeGPU();
 };
 
 
-
-
-
-#endif
+#endif  // VESSELNESS_IMAGE_FILTER_GPU_VESSELNESS_IMAGE_FILTER_GPU_H

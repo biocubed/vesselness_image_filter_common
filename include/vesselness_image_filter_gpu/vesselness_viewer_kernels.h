@@ -37,8 +37,8 @@
 
 
 
-#ifndef GPUVIEWKERNELS_H
-#define GPUVIEWKERNELS_H
+#ifndef VESSELNESS_IMAGE_FILTER_GPU_VESSELNESS_VIEWER_KERNELS_H
+#define VESSELNESS_IMAGE_FILTER_GPU_VESSELNESS_VIEWER_KERNELS_H
 
 #include <cuda_runtime.h>
 #include <opencv2/core/cuda.hpp>
@@ -46,17 +46,13 @@
 #include <opencv2/cudaimgproc.hpp>
 #include <opencv2/cudafilters.hpp>
 
+/**
+ * @brief convert a 2 channel segmented vesselness image to a displayable RBG format.
+ *
+ * @param source image
+ * @param output image
+ */
+void convertSegmentImageGPU(const cv::Mat &src, cv::Mat &dst);
 
 
-
-
-//Converts a single image into a displayable RGB forcv::Mat.
-void convertSegmentImageGPU(const cv::Mat&, cv::Mat&);
-
-
-
-
-
-
-
-#endif
+#endif  // VESSELNESS_IMAGE_FILTER_GPU_VESSELNESS_VIEWER_KERNELS_H

@@ -37,64 +37,67 @@
 
 
 
- #include "vesselness_image_filter_gpu/vesselness_viewer_kernels.h"
+#include "vesselness_image_filter_gpu/vesselness_viewer_kernels.h"
 
-using namespace cv;
-using namespace cv::cuda;
+void convertSegmentImageGPU(const cv::Mat &src, cv::Mat &dst)
+{
+  // Initialize the stream:
+  cv::cuda::Stream streamInfo;
 
-void convertSegmentImageGPU(const Mat&src,Mat&dst){
-	
-    //initialize the stream:
-	cv::cuda::Stream streamInfo;
+  // allocate the pagelocked memory:
+  cv::cuda::HostMem srcMatMem(src.size(), CV_32FC2);
+  cv::cuda::HostMem dstMatMem(src.size(), CV_8UC3);
 
-    // allocate the pagelocked memory:
-    HostMem srcMatMem(src.size(), CV_32FC2);
-    HostMem dstMatMem(src.size(), CV_8UC3);
+  cv::Mat srcMatLocked = srcMatMem.createMatHeader();
 
-    Mat srcMatLocked =srcMatMem.createMatHeader();
+  src.copyTo(srcMatLocked);
 
-    src.copyTo(srcMatLocked);
+  cv::cuda::GpuMat srcG;
+  srcG.upload(srcMatLocked, streamInfo);
+  cv::cuda::GpuMat scaledSrc, scaledSrcU;
 
-   	GpuMat srcG;
-   	srcG.upload(srcMatLocked,streamInfo);
-    GpuMat scaledSrc,scaledSrcU;
-    multiply(srcG,Scalar(255/3.14159,255.0),scaledSrc,1,CV_32FC2,streamInfo);
-    
-    scaledSrc.convertTo(scaledSrcU,CV_8UC2,streamInfo);
+  // scale the image from [0-3.141] x [0-1] to [0-255] x [0 - 255].
+  cv::cuda::multiply(srcG, cv::Scalar(179/3.14159, 255.0), scaledSrc, 1, CV_32FC2, streamInfo);
 
-    std::vector<GpuMat> splitList;
-	
-    split(scaledSrcU,splitList,streamInfo);
-    GpuMat onesG(src.rows,src.cols,CV_8UC1);
+  // convert the image from a floating point image
+  // to an 8 bit unsigned char image.
+  scaledSrc.convertTo(scaledSrcU, CV_8UC2, streamInfo);
 
-    splitList.push_back(onesG);
+  // split the 2 channel image into a vector of images.
+  // add a third channel of 1s.
+  // combine the images into 1 3 channel image.
+  std::vector< cv::cuda::GpuMat > splitList;
+  cv::cuda::split(scaledSrcU, splitList, streamInfo);
+  cv::cuda::GpuMat onesG(src.rows, src.cols, CV_8UC1);
+  splitList.push_back(onesG);
+  splitList[2].setTo(127, streamInfo);
 
-    splitList[2].setTo(127,streamInfo);
+  cv::cuda::GpuMat outputG, hsvG;
+  cv::cuda::merge(splitList, hsvG, streamInfo);
 
-	
-	GpuMat outputG,hsvG;
+  // convert the image to a color image from an HSV image.
+  cv::cuda::cvtColor(hsvG, outputG, CV_HSV2BGR, 0, streamInfo);
 
-	merge(splitList,hsvG,streamInfo);
-    
-    cuda::cvtColor(hsvG,outputG,CV_HSV2BGR,0,streamInfo);
+  // download the image to the host memory.
+  outputG.download(dstMatMem, streamInfo);
 
-    outputG.download(dstMatMem,streamInfo);
+  streamInfo.waitForCompletion();
 
-    streamInfo.waitForCompletion();
+  cv::Mat tempDst = dstMatMem.createMatHeader();
+  dst = tempDst.clone();
 
-     Mat tempDst = dstMatMem.createMatHeader();
-     dst = tempDst.clone(); 
-
-    //clean up the memory
-    srcMatMem.release();
-    srcG.release();
-    scaledSrc.release();
-    for (int i = 0; i < splitList.size(); i++)
-    {
-    	splitList[i].release();
-    }
-    outputG.release();
-    hsvG.release();
-    dstMatMem.release();
-    // All done
+  // clean up the memory
+  srcMatMem.release();
+  srcG.release();
+  scaledSrc.release();
+  scaledSrcU.release();
+  onesG.release();
+  for (int i = 0; i < splitList.size(); i++)
+  {
+    splitList[i].release();
+  }
+  outputG.release();
+  hsvG.release();
+  dstMatMem.release();
+  // All done
 }
